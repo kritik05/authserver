@@ -9,3 +9,5 @@ app:
   kafka:
     topics:
       scan: tool-scan-ingestion
+  elasticsearch:
+    findings-index: findings-index
