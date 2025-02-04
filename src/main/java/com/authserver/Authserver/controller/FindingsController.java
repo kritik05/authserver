@@ -1,52 +1,64 @@
 package com.authserver.Authserver.controller;
-
-import com.authserver.Authserver.model.Finding;
+import com.authserver.Authserver.model.DependabotStateRequest;
 import com.authserver.Authserver.service.ElasticsearchService;
+import com.authserver.Authserver.service.GithubService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
+import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/findings")
+//@CrossOrigin(origins = "http://localhost:5173")
 public class FindingsController {
 
     private final ElasticsearchService elasticsearchService;
-
-    public FindingsController(ElasticsearchService elasticsearchService) {
+    private final GithubService githubService;
+    public FindingsController(ElasticsearchService elasticsearchService, GithubService githubService) {
         this.elasticsearchService = elasticsearchService;
+        this.githubService=githubService;
     }
 
-    /**
-     * GET /api/findings
-     * Returns ALL documents in findings-index.
-     */
-    @GetMapping
-    public ResponseEntity<List<Finding>> getAllFindings() {
+
+    @DeleteMapping
+    public ResponseEntity<Void> deleteAllFindings() {
         try {
-            List<Finding> allFindings = elasticsearchService.findAll();
-            return ResponseEntity.ok(allFindings);
+            elasticsearchService.deleteAllFindings();
+            return ResponseEntity.noContent().build(); // 204 No Content
         } catch (IOException e) {
-            // handle exception
             return ResponseEntity.internalServerError().build();
         }
     }
 
-    /**
-     * GET /api/findings/{toolType}
-     * Returns documents in findings-index where toolType == {toolType}.
-     */
-    @GetMapping("/{toolType}")
-    public ResponseEntity<List<Finding>> getFindingsByToolType(@PathVariable String toolType) {
+@GetMapping("/search")
+public ResponseEntity<Map<String, Object>> searchFindings(
+        @RequestParam(required = false) List<String> toolType,
+        @RequestParam(required = false) List<String> severity,
+        @RequestParam(required = false) List<String> status,
+        @RequestParam(defaultValue = "1") int page,
+        @RequestParam(defaultValue = "11") int size
+) {
+    try {
+        Map<String, Object> result = elasticsearchService.searchFindings(toolType, severity, status, page, size);
+        return ResponseEntity.ok(result);
+    } catch (IOException e) {
+        return ResponseEntity.internalServerError().build();
+    }
+}
+    @PutMapping("/{uuid}/dependabot/alerts/{alertNumber}/state")
+    public ResponseEntity<Void> updateDependabotState(
+            @PathVariable String uuid,
+            @RequestBody DependabotStateRequest request,
+            @PathVariable String alertNumber
+    ) {
         try {
-            List<Finding> findings = elasticsearchService.findByToolType(toolType);
-            return ResponseEntity.ok(findings);
-        } catch (IOException e) {
-            // handle exception
+            githubService.updateDependabotAlert(alertNumber, request.getState(), request.getDismissedReason());
+            elasticsearchService.updateDependabotState(uuid, request.getState(), request.getDismissedReason());
+
+            return ResponseEntity.noContent().build();
+        } catch (Exception ex) {
+            ex.printStackTrace();
             return ResponseEntity.internalServerError().build();
         }
     }

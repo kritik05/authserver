@@ -15,7 +15,6 @@ public class ElasticSearchConfig {
     @Bean
     public ElasticsearchClient elasticsearchClient() {
         RestClient restClient = RestClient.builder(
-                // Point to your ES cluster, e.g. localhost:9200
                 new org.apache.http.HttpHost("localhost", 9200, "http")
         ).build();
 
