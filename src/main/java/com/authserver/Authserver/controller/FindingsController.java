@@ -1,5 +1,5 @@
 package com.authserver.Authserver.controller;
-import com.authserver.Authserver.model.DependabotStateRequest;
+import com.authserver.Authserver.model.StateRequest;
 import com.authserver.Authserver.service.ElasticsearchService;
 import com.authserver.Authserver.service.GithubService;
 import org.springframework.http.ResponseEntity;
@@ -10,7 +10,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/findings")
-//@CrossOrigin(origins = "http://localhost:5173")
 public class FindingsController {
 
     private final ElasticsearchService elasticsearchService;
@@ -25,7 +24,7 @@ public class FindingsController {
     public ResponseEntity<Void> deleteAllFindings() {
         try {
             elasticsearchService.deleteAllFindings();
-            return ResponseEntity.noContent().build(); // 204 No Content
+            return ResponseEntity.noContent().build();
         } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
@@ -46,15 +45,15 @@ public ResponseEntity<Map<String, Object>> searchFindings(
         return ResponseEntity.internalServerError().build();
     }
 }
-    @PutMapping("/{uuid}/dependabot/alerts/{alertNumber}/state")
+    @PutMapping("/{tooltype}/alerts/{alertNumber}/state")
     public ResponseEntity<Void> updateDependabotState(
-            @PathVariable String uuid,
-            @RequestBody DependabotStateRequest request,
+            @PathVariable String tooltype,
+            @RequestBody StateRequest request,
             @PathVariable String alertNumber
     ) {
         try {
-            githubService.updateDependabotAlert(alertNumber, request.getState(), request.getDismissedReason());
-            elasticsearchService.updateDependabotState(uuid, request.getState(), request.getDismissedReason());
+            githubService.updateDependabotAlert(alertNumber,tooltype, request.getState(), request.getDismissedReason());
+//            elasticsearchService.updateState(uuid, request.getState(), request.getDismissedReason());
 
             return ResponseEntity.noContent().build();
         } catch (Exception ex) {

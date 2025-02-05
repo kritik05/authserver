@@ -93,6 +93,12 @@ public Map<String, Object> searchFindings(
     SearchResponse<Finding> response = esClient.search(s -> s
                     .index(findingsIndex)
                     .query(q -> q.bool(boolQuery))
+                    .sort(sort -> sort
+                            .field(f -> f
+                                    .field("updatedAt")
+                                    .order(co.elastic.clients.elasticsearch._types.SortOrder.Desc)
+                            )
+                    )
                     .from(from)
                     .size(size),
             Finding.class);
@@ -110,33 +116,34 @@ public Map<String, Object> searchFindings(
 
     return result;
 }
-    public void updateDependabotState(String uuid, String state, String dismissedReason) throws IOException {
-        Map<String, Object> partial = new HashMap<>();
-        Status finalStatus = mapStringToStatusDependabot(state);
-        partial.put("status", finalStatus);
-
-        UpdateRequest<Map<String, Object>, Map<String, Object>> updateReq = UpdateRequest.of(u -> u
-                .index(findingsIndex)
-                .id(uuid)
-                .doc(partial)
-        );
-
-        esClient.update(updateReq, Map.class);
-    }
-
-    private Status mapStringToStatusDependabot(String rawState) {
-
-        if (rawState == null) {
-            return Status.OPEN;
-        }
-        switch (rawState.toLowerCase()) {
-            case "open":
-                return Status.OPEN;
-            case "dismissed":
-                return Status.FALSE_POSITIVE;
-            default:
-                return Status.OPEN;
-        }
-    }
+//    public void updateState(String uuid, String state, String dismissedReason) throws IOException {
+//        Map<String, Object> partial = new HashMap<>();
+//        Status finalStatus = mapStringToStatus(state);
+//        partial.put("status", finalStatus);
+//
+//        UpdateRequest<Map<String, Object>, Map<String, Object>> updateReq = UpdateRequest.of(u -> u
+//                .index(findingsIndex)
+//                .id(uuid)
+//                .doc(partial)
+//        );
+//
+//        esClient.update(updateReq, Map.class);
+//    }
+//
+//    private Status mapStringToStatus(String rawState) {
+//
+//        if (rawState == null) {
+//            return Status.OPEN;
+//        }
+//        switch (rawState.toLowerCase()) {
+//            case "open":
+//                return Status.OPEN;
+//            case "dismissed":
+//                return Status.FALSE_POSITIVE;
+//            case "resolved":
+//            default:
+//                return Status.FIXED;
+//        }
+//    }
 }
 

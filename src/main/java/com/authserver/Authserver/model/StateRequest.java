@@ -1,6 +1,6 @@
 package com.authserver.Authserver.model;
 
-public class DependabotStateRequest {
+public class StateRequest {
     private String state;
     private String dismissedReason;
 
