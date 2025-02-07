@@ -45,8 +45,9 @@ public ResponseEntity<Map<String, Object>> searchFindings(
         return ResponseEntity.internalServerError().build();
     }
 }
-    @PutMapping("/{tooltype}/alerts/{alertNumber}/state")
+    @PutMapping("/{uuid}/{tooltype}/alerts/{alertNumber}/state")
     public ResponseEntity<Void> updateDependabotState(
+            @PathVariable String uuid,
             @PathVariable String tooltype,
             @RequestBody StateRequest request,
             @PathVariable String alertNumber
