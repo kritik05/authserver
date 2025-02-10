@@ -2,6 +2,7 @@ package com.authserver.Authserver.controller;
 
 import com.authserver.Authserver.service.ElasticsearchService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -21,23 +22,36 @@ public class DashboardController {
         this.esService = esService;
     }
 
-    @GetMapping
-    public ResponseEntity<Map<String, Object>> getDashboardData(
-            @RequestParam(name="tools", required=false) List<String> tools
-    ) {
-       ;
-        try {
-            if (tools == null || tools.isEmpty()) {
-                Map<String, Object> data = esService.getDashboardData();
-                return ResponseEntity.ok(data);
-            } else {
-                // Multi (or single) selected tools => pass them as a list
-                Map<String, Object> data = esService.getDashboardDataForTools(tools);
-                return ResponseEntity.ok(data);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-            return ResponseEntity.internalServerError().build();
-        }
+    @GetMapping("/tools")
+    @PreAuthorize("hasAnyRole('USER','ADMIN','SUPER_ADMIN')")
+    public Map<String, Long> getToolData(
+            @RequestParam(value = "tools", required = false) List<String> tools
+    ) throws IOException {
+        return esService.getToolDataForTools(tools);
     }
+
+    @GetMapping("/cvss")
+    @PreAuthorize("hasAnyRole('USER','ADMIN','SUPER_ADMIN')")
+    public List<Map<String, Object>> getCvssData(
+            @RequestParam(value = "tools", required = false) List<String> tools
+    ) throws IOException {
+        return esService.getCvssDataForTools(tools);
+    }
+
+    @GetMapping("/status")
+    @PreAuthorize("hasAnyRole('USER','ADMIN','SUPER_ADMIN')")
+    public Map<String, Long> getStatusData(
+            @RequestParam(value = "tools", required = false) List<String> tools
+    ) throws IOException {
+        return esService.getStatusDataForTools(tools);
+    }
+
+    @GetMapping("/severity")
+    @PreAuthorize("hasAnyRole('USER','ADMIN','SUPER_ADMIN')")
+    public Map<String, Long> getSeverityData(
+            @RequestParam(value = "tools", required = false) List<String> tools
+    ) throws IOException {
+        return esService.getSeverityDataForTools(tools);
+    }
+
 }

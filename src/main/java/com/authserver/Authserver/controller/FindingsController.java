@@ -3,6 +3,7 @@ import com.authserver.Authserver.model.StateRequest;
 import com.authserver.Authserver.service.ElasticsearchService;
 import com.authserver.Authserver.service.GithubService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.util.List;
@@ -14,13 +15,14 @@ public class FindingsController {
 
     private final ElasticsearchService elasticsearchService;
     private final GithubService githubService;
+
     public FindingsController(ElasticsearchService elasticsearchService, GithubService githubService) {
         this.elasticsearchService = elasticsearchService;
         this.githubService=githubService;
     }
 
-
     @DeleteMapping
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<Void> deleteAllFindings() {
         try {
             elasticsearchService.deleteAllFindings();
@@ -31,6 +33,7 @@ public class FindingsController {
     }
 
 @GetMapping("/search")
+@PreAuthorize("hasAnyRole('USER','ADMIN','SUPER_ADMIN')")
 public ResponseEntity<Map<String, Object>> searchFindings(
         @RequestParam(required = false) List<String> toolType,
         @RequestParam(required = false) List<String> severity,
@@ -45,7 +48,9 @@ public ResponseEntity<Map<String, Object>> searchFindings(
         return ResponseEntity.internalServerError().build();
     }
 }
+
     @PutMapping("/{uuid}/{tooltype}/alerts/{alertNumber}/state")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<Void> updateDependabotState(
             @PathVariable String uuid,
             @PathVariable String tooltype,
@@ -53,8 +58,8 @@ public ResponseEntity<Map<String, Object>> searchFindings(
             @PathVariable String alertNumber
     ) {
         try {
-            githubService.updateDependabotAlert(alertNumber,tooltype, request.getState(), request.getDismissedReason());
-//            elasticsearchService.updateState(uuid, request.getState(), request.getDismissedReason());
+            githubService.updateAlert(alertNumber,tooltype, request.getState(), request.getDismissedReason());
+            elasticsearchService.updateState(uuid,tooltype ,request.getState(), request.getDismissedReason());
 
             return ResponseEntity.noContent().build();
         } catch (Exception ex) {

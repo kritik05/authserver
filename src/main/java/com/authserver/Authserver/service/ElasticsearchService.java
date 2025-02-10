@@ -6,14 +6,20 @@ import co.elastic.clients.elasticsearch._types.aggregations.*;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 
+import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.UpdateRequest;
 import com.authserver.Authserver.model.Finding;
 import com.authserver.Authserver.model.Status;
+import com.authserver.Authserver.service.mappers.CodeScanMapper;
+import com.authserver.Authserver.service.mappers.DependabotMapper;
+import com.authserver.Authserver.service.mappers.SecretScanMapper;
+import org.apache.kafka.common.protocol.types.Field;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -40,14 +46,14 @@ public class ElasticsearchService {
         );
     }
 
-public Map<String, Object> searchFindings(
+    public Map<String, Object> searchFindings(
         List<String> toolTypes,
         List<String> severities,
         List<String> statuses,
         int page,
         int size) throws IOException {
 
-    List<Query> mustQueries = new ArrayList<>();
+     List<Query> mustQueries = new ArrayList<>();
 
     if (toolTypes != null && !toolTypes.isEmpty()) {
         List<FieldValue> toolTypeValues = toolTypes.stream()
@@ -117,11 +123,12 @@ public Map<String, Object> searchFindings(
 
     return result;
 }
-    public void updateState(String uuid, String state, String dismissedReason) throws IOException {
-        Map<String, Object> partial = new HashMap<>();
-        Status finalStatus = mapStringToStatus(state);
-        partial.put("status", finalStatus);
 
+    public void updateState(String uuid, String tooltype, String state, String dismissedReason) throws IOException {
+        Map<String, Object> partial = new HashMap<>();
+        Status finalStatus = mapStringToToolType(tooltype,state,dismissedReason);
+        partial.put("status", finalStatus);
+        partial.put("updatedAt",Instant.now().toString());
         UpdateRequest<Map<String, Object>, Map<String, Object>> updateReq = UpdateRequest.of(u -> u
                 .index(findingsIndex)
                 .id(uuid)
@@ -131,93 +138,130 @@ public Map<String, Object> searchFindings(
         esClient.update(updateReq, Map.class);
     }
 
-    private Status mapStringToStatus(String rawState) {
+    private final CodeScanMapper codeScanMapper = new CodeScanMapper();
+    private final DependabotMapper dependabotMapper = new DependabotMapper();
+    private final SecretScanMapper secretScanMapper = new SecretScanMapper();
 
-        if (rawState == null) {
-            return Status.OPEN;
-        }
-        switch (rawState.toLowerCase()) {
-            case "open":
-                return Status.OPEN;
-            case "dismissed":
-                return Status.FALSE_POSITIVE;
-            case "resolved":
+    private Status mapStringToToolType(String tooltype,String state,String dismissedReason) {
+        switch (tooltype) {
+            case "CODESCAN":
+                return  codeScanMapper.mapStatus(state,dismissedReason);
+            case "DEPENDABOT":
+                return dependabotMapper.mapStatus(state,dismissedReason);
+            case "SECRETSCAN":
+                return secretScanMapper.mapStatus(state);
             default:
-                return Status.FIXED;
-        }
-    }
-    public Map<String, Object> getDashboardData() throws IOException {
-
-        // 1) Execute a search with multiple aggregations
-        SearchResponse<Void> response = esClient.search(s -> s
-                        .index(findingsIndex)
-                        .size(0)
-                        .aggregations("toolAgg", a -> a.terms(t -> t.field("toolType.keyword")))
-                        .aggregations("statusAgg", a -> a.terms(t -> t.field("status.keyword")))
-                        .aggregations("severityAgg", a -> a.terms(t -> t.field("severity.keyword")))
-                        .aggregations("cvssAgg", a -> a.histogram(h -> h
-                                .field("cvss")
-                                .interval(2.0)
-                        )),
-                Void.class
-        );
-
-        // 2) Build final result
-        Map<String, Object> result = new HashMap<>();
-
-        // Parse "toolAgg" -> string terms
-        result.put("toolWise", parseStringTerms(response.aggregations().get("toolAgg")));
-
-        // Parse "statusAgg" -> string terms
-        result.put("statusWise", parseStringTerms(response.aggregations().get("statusAgg")));
-
-        // Parse "severityAgg" -> string terms
-        result.put("severityWise", parseStringTerms(response.aggregations().get("severityAgg")));
-
-        // Parse "cvssAgg" -> histogram
-        result.put("cvssRanges", parseHistogram(response.aggregations().get("cvssAgg")));
-
-        return result;
-    }
-
-    public Map<String, Object> getDashboardDataForTools(List<String> tools) throws IOException {
-        // If user passes no tools or "ALL" logic -> just return all
-        if (tools == null || tools.isEmpty()) {
-            return getDashboardData();
+                return Status.OPEN;
         }
 
-        // Build a terms query for toolType.keyword IN (tools)
-        List<FieldValue> toolValues = tools.stream()
-                .map(FieldValue::of)
-                .collect(Collectors.toList());
-
-        SearchResponse<Void> response = esClient.search(s -> s
-                        .index(findingsIndex)
-                        .size(0)
-                        .query(q -> q.terms(t -> t
-                                .field("toolType.keyword")
-                                .terms(ts -> ts.value(toolValues))
-                        ))
-                        // same aggregations as your original getDashboardData():
-                        .aggregations("toolAgg", a -> a.terms(t -> t.field("toolType.keyword")))
-                        .aggregations("statusAgg", a -> a.terms(t -> t.field("status.keyword")))
-                        .aggregations("severityAgg", a -> a.terms(t -> t.field("severity.keyword")))
-                        .aggregations("cvssAgg", a -> a.histogram(h -> h
-                                .field("cvss")
-                                .interval(2.0)
-                        )),
-                Void.class
-        );
-
-        // Build final result using your existing parsing
-        Map<String, Object> result = new HashMap<>();
-        result.put("toolWise", parseStringTerms(response.aggregations().get("toolAgg")));
-        result.put("statusWise", parseStringTerms(response.aggregations().get("statusAgg")));
-        result.put("severityWise", parseStringTerms(response.aggregations().get("severityAgg")));
-        result.put("cvssRanges", parseHistogram(response.aggregations().get("cvssAgg")));
-
-        return result;
     }
+
+    public Map<String, Long> getToolDataForTools(List<String> tools) throws IOException {
+        // 1) Build the request
+        SearchRequest.Builder builder = new SearchRequest.Builder()
+                .index(findingsIndex)
+                .size(0);
+
+        // 2) If tools is non-empty and doesn't contain "ALL", apply a filter
+        if (tools != null && !tools.isEmpty() && !tools.contains("ALL")) {
+            List<FieldValue> toolValues = tools.stream()
+                    .map(FieldValue::of)
+                    .collect(Collectors.toList());
+            builder.query(q -> q.terms(t -> t
+                    .field("toolType.keyword")
+                    .terms(ts -> ts.value(toolValues))));
+        }
+
+        // 3) Add only the tool aggregator
+        builder.aggregations("toolAgg", a -> a.terms(t -> t.field("toolType.keyword")));
+
+        // 4) Execute
+        SearchResponse<Void> response = esClient.search(builder.build(), Void.class);
+
+        // 5) Parse
+        Aggregate toolAggregate = response.aggregations().get("toolAgg");
+        return parseStringTerms(toolAggregate);
+    }
+    public List<Map<String, Object>> getCvssDataForTools(List<String> tools) throws IOException {
+        // 1) Build
+        SearchRequest.Builder builder = new SearchRequest.Builder()
+                .index(findingsIndex)
+                .size(0);
+
+        // 2) Filter if necessary
+        if (tools != null && !tools.isEmpty() && !tools.contains("ALL")) {
+            List<FieldValue> toolValues = tools.stream()
+                    .map(FieldValue::of)
+                    .collect(Collectors.toList());
+            builder.query(q -> q.terms(t -> t
+                    .field("toolType.keyword")
+                    .terms(ts -> ts.value(toolValues))));
+        }
+
+        // 3) aggregator
+        builder.aggregations("cvssAgg", a -> a.histogram(h -> h.field("cvss").interval(2.0)));
+
+        // 4) Execute
+        SearchResponse<Void> response = esClient.search(builder.build(), Void.class);
+
+        // 5) Parse
+        Aggregate agg = response.aggregations().get("cvssAgg");
+        return parseHistogram(agg);
+    }
+    public Map<String, Long> getStatusDataForTools(List<String> tools) throws IOException {
+        // 1) Build
+        SearchRequest.Builder builder = new SearchRequest.Builder()
+                .index(findingsIndex)
+                .size(0);
+
+        // 2) Filter if necessary
+        if (tools != null && !tools.isEmpty() && !tools.contains("ALL")) {
+            List<FieldValue> toolValues = tools.stream()
+                    .map(FieldValue::of)
+                    .collect(Collectors.toList());
+            builder.query(q -> q.terms(t -> t
+                    .field("toolType.keyword")
+                    .terms(ts -> ts.value(toolValues))));
+        }
+
+        // 3) Add aggregator
+        builder.aggregations("statusAgg", a -> a.terms(t -> t.field("status.keyword")));
+
+        // 4) Execute
+        SearchResponse<Void> response = esClient.search(builder.build(), Void.class);
+
+        // 5) Parse
+        Aggregate agg = response.aggregations().get("statusAgg");
+        return parseStringTerms(agg);
+    }
+    public Map<String, Long> getSeverityDataForTools(List<String> tools) throws IOException {
+        // 1) Build
+        SearchRequest.Builder builder = new SearchRequest.Builder()
+                .index(findingsIndex)
+                .size(0);
+
+        // 2) Filter if necessary
+        if (tools != null && !tools.isEmpty() && !tools.contains("ALL")) {
+            List<FieldValue> toolValues = tools.stream()
+                    .map(FieldValue::of)
+                    .collect(Collectors.toList());
+            builder.query(q -> q.terms(t -> t
+                    .field("toolType.keyword")
+                    .terms(ts -> ts.value(toolValues))));
+        }
+
+        // 3) aggregator
+        builder.aggregations("severityAgg", a -> a.terms(t -> t.field("severity.keyword")));
+
+        // 4) Execute
+        SearchResponse<Void> response = esClient.search(builder.build(), Void.class);
+
+        // 5) Parse
+        Aggregate agg = response.aggregations().get("severityAgg");
+        return parseStringTerms(agg);
+    }
+
+
     /**
      * Check if aggregate.stringTerms() is non-null. If so, parse buckets. Otherwise return empty.
      */

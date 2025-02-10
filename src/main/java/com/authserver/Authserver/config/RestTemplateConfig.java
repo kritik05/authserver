@@ -11,13 +11,7 @@ public class RestTemplateConfig {
     @Bean
     public RestTemplate restTemplate() {
         // Use the Apache HttpComponents library to enable PATCH
-        HttpComponentsClientHttpRequestFactory requestFactory
-                = new HttpComponentsClientHttpRequestFactory();
-
-        // Optionally, you can tune timeouts:
-        // requestFactory.setConnectTimeout(5000);
-        // requestFactory.setReadTimeout(10000);
-
+        HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory();
         return new RestTemplate(requestFactory);
     }
 }

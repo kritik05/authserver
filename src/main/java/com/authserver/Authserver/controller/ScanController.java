@@ -3,6 +3,7 @@ package com.authserver.Authserver.controller;
 import com.authserver.Authserver.model.ScanEvent;
 import com.authserver.Authserver.service.ScanEventProducer;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -16,6 +17,7 @@ public class ScanController {
     }
 
     @PostMapping("/scan")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<String> initiateScan(@RequestBody ScanEvent request) {
         scanEventProducer.sendScanEvent(request);
 
