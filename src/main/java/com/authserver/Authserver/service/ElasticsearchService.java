@@ -11,6 +11,8 @@ import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.UpdateRequest;
 import com.authserver.Authserver.model.Finding;
 import com.authserver.Authserver.model.Status;
+import com.authserver.Authserver.model.Tenant;
+import com.authserver.Authserver.repository.TenantRepository;
 import com.authserver.Authserver.service.mappers.CodeScanMapper;
 import com.authserver.Authserver.service.mappers.DependabotMapper;
 import com.authserver.Authserver.service.mappers.SecretScanMapper;
@@ -20,28 +22,30 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 public class ElasticsearchService {
 
     private final ElasticsearchClient esClient;
+    private final TenantRepository tenantRepository;
 
     @Value("${app.elasticsearch.findings-index}")
     private String findingsIndex;
 
-    public ElasticsearchService(ElasticsearchClient esClient) {
+    public ElasticsearchService(ElasticsearchClient esClient,TenantRepository tenantRepository) {
         this.esClient = esClient;
+        this.tenantRepository=tenantRepository;
     }
 
 
-    public void deleteAllFindings() throws IOException {
+    public void deleteAllFindings(int tenantId) throws IOException {
+        Optional<Tenant> optionalTenant = tenantRepository.findById(tenantId);
+        Tenant tenant = optionalTenant.get();
+        String esindex= tenant.getFindingindex();
         esClient.deleteByQuery(dbq -> dbq
-                .index(findingsIndex)
+                .index(esindex)
                 .query(q -> q.matchAll(m -> m))
         );
     }
@@ -51,7 +55,8 @@ public class ElasticsearchService {
         List<String> severities,
         List<String> statuses,
         int page,
-        int size) throws IOException {
+        int size,
+        int tenantId) throws IOException {
 
      List<Query> mustQueries = new ArrayList<>();
 
@@ -96,9 +101,11 @@ public class ElasticsearchService {
 
     BoolQuery boolQuery = BoolQuery.of(b -> b.must(mustQueries));
     int from = (page - 1) * size;
-
+        Optional<Tenant> optionalTenant = tenantRepository.findById(tenantId);
+        Tenant tenant = optionalTenant.get();
+        String esindex= tenant.getFindingindex();
     SearchResponse<Finding> response = esClient.search(s -> s
-                    .index(findingsIndex)
+                    .index(esindex)
                     .query(q -> q.bool(boolQuery))
                     .sort(sort -> sort
                             .field(f -> f
@@ -124,13 +131,16 @@ public class ElasticsearchService {
     return result;
 }
 
-    public void updateState(String uuid, String tooltype, String state, String dismissedReason) throws IOException {
+    public void updateState(String uuid, String tooltype, String state, String dismissedReason,int tenantId) throws IOException {
+        Optional<Tenant> optionalTenant = tenantRepository.findById(tenantId);
+        Tenant tenant = optionalTenant.get();
+        String esindex= tenant.getFindingindex();
         Map<String, Object> partial = new HashMap<>();
         Status finalStatus = mapStringToToolType(tooltype,state,dismissedReason);
         partial.put("status", finalStatus);
         partial.put("updatedAt",Instant.now().toString());
         UpdateRequest<Map<String, Object>, Map<String, Object>> updateReq = UpdateRequest.of(u -> u
-                .index(findingsIndex)
+                .index(esindex)
                 .id(uuid)
                 .doc(partial)
         );
@@ -156,10 +166,13 @@ public class ElasticsearchService {
 
     }
 
-    public Map<String, Long> getToolDataForTools(List<String> tools) throws IOException {
+    public Map<String, Long> getToolDataForTools(List<String> tools,int tenantId) throws IOException {
+        Optional<Tenant> optionalTenant = tenantRepository.findById(tenantId);
+        Tenant tenant = optionalTenant.get();
+        String esindex= tenant.getFindingindex();
         // 1) Build the request
         SearchRequest.Builder builder = new SearchRequest.Builder()
-                .index(findingsIndex)
+                .index(esindex)
                 .size(0);
 
         // 2) If tools is non-empty and doesn't contain "ALL", apply a filter
@@ -182,10 +195,13 @@ public class ElasticsearchService {
         Aggregate toolAggregate = response.aggregations().get("toolAgg");
         return parseStringTerms(toolAggregate);
     }
-    public List<Map<String, Object>> getCvssDataForTools(List<String> tools) throws IOException {
+    public List<Map<String, Object>> getCvssDataForTools(List<String> tools,int tenantId) throws IOException {
+        Optional<Tenant> optionalTenant = tenantRepository.findById(tenantId);
+        Tenant tenant = optionalTenant.get();
+        String esindex= tenant.getFindingindex();
         // 1) Build
         SearchRequest.Builder builder = new SearchRequest.Builder()
-                .index(findingsIndex)
+                .index(esindex)
                 .size(0);
 
         // 2) Filter if necessary
@@ -208,10 +224,13 @@ public class ElasticsearchService {
         Aggregate agg = response.aggregations().get("cvssAgg");
         return parseHistogram(agg);
     }
-    public Map<String, Long> getStatusDataForTools(List<String> tools) throws IOException {
+    public Map<String, Long> getStatusDataForTools(List<String> tools,int tenantId) throws IOException {
+        Optional<Tenant> optionalTenant = tenantRepository.findById(tenantId);
+        Tenant tenant = optionalTenant.get();
+        String esindex= tenant.getFindingindex();
         // 1) Build
         SearchRequest.Builder builder = new SearchRequest.Builder()
-                .index(findingsIndex)
+                .index(esindex)
                 .size(0);
 
         // 2) Filter if necessary
@@ -234,10 +253,13 @@ public class ElasticsearchService {
         Aggregate agg = response.aggregations().get("statusAgg");
         return parseStringTerms(agg);
     }
-    public Map<String, Long> getSeverityDataForTools(List<String> tools) throws IOException {
+    public Map<String, Long> getSeverityDataForTools(List<String> tools,int tenantId) throws IOException {
+        Optional<Tenant> optionalTenant = tenantRepository.findById(tenantId);
+        Tenant tenant = optionalTenant.get();
+        String esindex= tenant.getFindingindex();
         // 1) Build
         SearchRequest.Builder builder = new SearchRequest.Builder()
-                .index(findingsIndex)
+                .index(esindex)
                 .size(0);
 
         // 2) Filter if necessary

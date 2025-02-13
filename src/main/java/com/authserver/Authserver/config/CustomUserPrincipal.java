@@ -1,6 +1,6 @@
 package com.authserver.Authserver.config;
 
-import com.authserver.Authserver.model.AppUser;
+import com.authserver.Authserver.model.User;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
@@ -9,14 +9,14 @@ import java.util.Map;
 
 public class CustomUserPrincipal implements OAuth2User {
 
-    private final AppUser appUser;
+    private final User user;
     private final Map<String, Object> attributes;
     private final Collection<? extends GrantedAuthority> authorities;
 
-    public CustomUserPrincipal(AppUser appUser,
+    public CustomUserPrincipal(User user,
                                Map<String, Object> attributes,
                                Collection<? extends GrantedAuthority> authorities) {
-        this.appUser = appUser;
+        this.user = user;
         this.attributes = attributes;
         this.authorities = authorities;
     }
@@ -33,10 +33,10 @@ public class CustomUserPrincipal implements OAuth2User {
 
     @Override
     public String getName() {
-        return this.appUser.getEmail();
+        return this.user.getEmail();
     }
 
-    public AppUser getAppUser() {
-        return this.appUser;
+    public User getUser() {
+        return this.user;
     }
 }
