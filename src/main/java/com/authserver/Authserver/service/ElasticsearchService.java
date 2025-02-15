@@ -13,10 +13,7 @@ import com.authserver.Authserver.model.Finding;
 import com.authserver.Authserver.model.Status;
 import com.authserver.Authserver.model.Tenant;
 import com.authserver.Authserver.repository.TenantRepository;
-import com.authserver.Authserver.service.mappers.CodeScanMapper;
-import com.authserver.Authserver.service.mappers.DependabotMapper;
-import com.authserver.Authserver.service.mappers.SecretScanMapper;
-import org.apache.kafka.common.protocol.types.Field;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -131,51 +128,14 @@ public class ElasticsearchService {
     return result;
 }
 
-    public void updateState(String uuid, String tooltype, String state, String dismissedReason,int tenantId) throws IOException {
-        Optional<Tenant> optionalTenant = tenantRepository.findById(tenantId);
-        Tenant tenant = optionalTenant.get();
-        String esindex= tenant.getFindingindex();
-        Map<String, Object> partial = new HashMap<>();
-        Status finalStatus = mapStringToToolType(tooltype,state,dismissedReason);
-        partial.put("status", finalStatus);
-        partial.put("updatedAt",Instant.now().toString());
-        UpdateRequest<Map<String, Object>, Map<String, Object>> updateReq = UpdateRequest.of(u -> u
-                .index(esindex)
-                .id(uuid)
-                .doc(partial)
-        );
-
-        esClient.update(updateReq, Map.class);
-    }
-
-    private final CodeScanMapper codeScanMapper = new CodeScanMapper();
-    private final DependabotMapper dependabotMapper = new DependabotMapper();
-    private final SecretScanMapper secretScanMapper = new SecretScanMapper();
-
-    private Status mapStringToToolType(String tooltype,String state,String dismissedReason) {
-        switch (tooltype) {
-            case "CODESCAN":
-                return  codeScanMapper.mapStatus(state,dismissedReason);
-            case "DEPENDABOT":
-                return dependabotMapper.mapStatus(state,dismissedReason);
-            case "SECRETSCAN":
-                return secretScanMapper.mapStatus(state);
-            default:
-                return Status.OPEN;
-        }
-
-    }
-
     public Map<String, Long> getToolDataForTools(List<String> tools,int tenantId) throws IOException {
         Optional<Tenant> optionalTenant = tenantRepository.findById(tenantId);
         Tenant tenant = optionalTenant.get();
         String esindex= tenant.getFindingindex();
-        // 1) Build the request
         SearchRequest.Builder builder = new SearchRequest.Builder()
                 .index(esindex)
                 .size(0);
 
-        // 2) If tools is non-empty and doesn't contain "ALL", apply a filter
         if (tools != null && !tools.isEmpty() && !tools.contains("ALL")) {
             List<FieldValue> toolValues = tools.stream()
                     .map(FieldValue::of)
@@ -185,26 +145,19 @@ public class ElasticsearchService {
                     .terms(ts -> ts.value(toolValues))));
         }
 
-        // 3) Add only the tool aggregator
         builder.aggregations("toolAgg", a -> a.terms(t -> t.field("toolType.keyword")));
-
-        // 4) Execute
         SearchResponse<Void> response = esClient.search(builder.build(), Void.class);
-
-        // 5) Parse
         Aggregate toolAggregate = response.aggregations().get("toolAgg");
         return parseStringTerms(toolAggregate);
     }
+
     public List<Map<String, Object>> getCvssDataForTools(List<String> tools,int tenantId) throws IOException {
         Optional<Tenant> optionalTenant = tenantRepository.findById(tenantId);
         Tenant tenant = optionalTenant.get();
         String esindex= tenant.getFindingindex();
-        // 1) Build
         SearchRequest.Builder builder = new SearchRequest.Builder()
                 .index(esindex)
                 .size(0);
-
-        // 2) Filter if necessary
         if (tools != null && !tools.isEmpty() && !tools.contains("ALL")) {
             List<FieldValue> toolValues = tools.stream()
                     .map(FieldValue::of)
@@ -213,27 +166,20 @@ public class ElasticsearchService {
                     .field("toolType.keyword")
                     .terms(ts -> ts.value(toolValues))));
         }
-
-        // 3) aggregator
         builder.aggregations("cvssAgg", a -> a.histogram(h -> h.field("cvss").interval(2.0)));
-
-        // 4) Execute
         SearchResponse<Void> response = esClient.search(builder.build(), Void.class);
-
-        // 5) Parse
         Aggregate agg = response.aggregations().get("cvssAgg");
         return parseHistogram(agg);
     }
+
     public Map<String, Long> getStatusDataForTools(List<String> tools,int tenantId) throws IOException {
         Optional<Tenant> optionalTenant = tenantRepository.findById(tenantId);
         Tenant tenant = optionalTenant.get();
         String esindex= tenant.getFindingindex();
-        // 1) Build
         SearchRequest.Builder builder = new SearchRequest.Builder()
                 .index(esindex)
                 .size(0);
 
-        // 2) Filter if necessary
         if (tools != null && !tools.isEmpty() && !tools.contains("ALL")) {
             List<FieldValue> toolValues = tools.stream()
                     .map(FieldValue::of)
@@ -243,26 +189,19 @@ public class ElasticsearchService {
                     .terms(ts -> ts.value(toolValues))));
         }
 
-        // 3) Add aggregator
         builder.aggregations("statusAgg", a -> a.terms(t -> t.field("status.keyword")));
-
-        // 4) Execute
         SearchResponse<Void> response = esClient.search(builder.build(), Void.class);
-
-        // 5) Parse
         Aggregate agg = response.aggregations().get("statusAgg");
         return parseStringTerms(agg);
     }
+
     public Map<String, Long> getSeverityDataForTools(List<String> tools,int tenantId) throws IOException {
         Optional<Tenant> optionalTenant = tenantRepository.findById(tenantId);
         Tenant tenant = optionalTenant.get();
         String esindex= tenant.getFindingindex();
-        // 1) Build
         SearchRequest.Builder builder = new SearchRequest.Builder()
                 .index(esindex)
                 .size(0);
-
-        // 2) Filter if necessary
         if (tools != null && !tools.isEmpty() && !tools.contains("ALL")) {
             List<FieldValue> toolValues = tools.stream()
                     .map(FieldValue::of)
@@ -271,14 +210,8 @@ public class ElasticsearchService {
                     .field("toolType.keyword")
                     .terms(ts -> ts.value(toolValues))));
         }
-
-        // 3) aggregator
         builder.aggregations("severityAgg", a -> a.terms(t -> t.field("severity.keyword")));
-
-        // 4) Execute
         SearchResponse<Void> response = esClient.search(builder.build(), Void.class);
-
-        // 5) Parse
         Aggregate agg = response.aggregations().get("severityAgg");
         return parseStringTerms(agg);
     }

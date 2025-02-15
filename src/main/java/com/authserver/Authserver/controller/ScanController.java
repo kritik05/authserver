@@ -1,11 +1,12 @@
 package com.authserver.Authserver.controller;
 
+import com.authserver.Authserver.events.ScanRequestEvent;
 import com.authserver.Authserver.model.Role;
-import com.authserver.Authserver.model.ScanEvent;
+//import com.authserver.Authserver.model.ScanEvent;
+import com.authserver.Authserver.model.ScanRequestPayload;
 import com.authserver.Authserver.security.RequiresRoles;
-import com.authserver.Authserver.service.ScanEventProducer;
+import com.authserver.Authserver.producer.ScanEventProducer;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -20,8 +21,9 @@ public class ScanController {
 
     @PostMapping("/scan")
     @RequiresRoles({Role.ADMIN, Role.SUPER_ADMIN})
-    public ResponseEntity<String> initiateScan(@RequestBody ScanEvent request) {
-        scanEventProducer.sendScanEvent(request);
+    public ResponseEntity<String> initiateScan(@RequestBody ScanRequestPayload request) {
+        ScanRequestEvent event = new ScanRequestEvent(request);
+        scanEventProducer.sendScanEvent(event);
         return ResponseEntity.ok("Scan event sent successfully.");
     }
 }

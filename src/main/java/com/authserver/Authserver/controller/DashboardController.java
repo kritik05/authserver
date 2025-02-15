@@ -3,8 +3,6 @@ package com.authserver.Authserver.controller;
 import com.authserver.Authserver.model.Role;
 import com.authserver.Authserver.security.RequiresRoles;
 import com.authserver.Authserver.service.ElasticsearchService;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;

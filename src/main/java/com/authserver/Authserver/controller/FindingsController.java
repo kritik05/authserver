@@ -1,9 +1,11 @@
 package com.authserver.Authserver.controller;
+import com.authserver.Authserver.events.UpdateRequestEvent;
 import com.authserver.Authserver.model.Role;
 import com.authserver.Authserver.model.StateRequest;
+import com.authserver.Authserver.model.UpdateRequestPayload;
+import com.authserver.Authserver.producer.UpdateEventProducer;
 import com.authserver.Authserver.security.RequiresRoles;
 import com.authserver.Authserver.service.ElasticsearchService;
-import com.authserver.Authserver.service.GithubService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
@@ -15,11 +17,11 @@ import java.util.Map;
 public class FindingsController {
 
     private final ElasticsearchService elasticsearchService;
-    private final GithubService githubService;
+    private final UpdateEventProducer updateEventProducer;
 
-    public FindingsController(ElasticsearchService elasticsearchService, GithubService githubService) {
+    public FindingsController(ElasticsearchService elasticsearchService,UpdateEventProducer updateEventProducer) {
         this.elasticsearchService = elasticsearchService;
-        this.githubService=githubService;
+        this.updateEventProducer=updateEventProducer;
     }
 
     @DeleteMapping
@@ -63,9 +65,9 @@ public ResponseEntity<Map<String, Object>> searchFindings(
             @RequestParam(value = "tenantId") int tenantId
     ) {
         try {
-            githubService.updateAlert(alertNumber,tooltype, request.getState(), request.getDismissedReason(),tenantId);
-            elasticsearchService.updateState(uuid,tooltype ,request.getState(), request.getDismissedReason(),tenantId);
-
+            UpdateRequestPayload updateRequestPayload=new UpdateRequestPayload(uuid,tooltype,request,alertNumber,tenantId);
+            UpdateRequestEvent updateRequestEvent=new UpdateRequestEvent(updateRequestPayload);
+            updateEventProducer.sendUpdateEvent(updateRequestEvent);
             return ResponseEntity.noContent().build();
         } catch (Exception ex) {
             ex.printStackTrace();
