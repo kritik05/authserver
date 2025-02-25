@@ -4,8 +4,9 @@ import com.authserver.Authserver.events.ScanRequestEvent;
 import com.authserver.Authserver.model.Role;
 //import com.authserver.Authserver.model.ScanEvent;
 import com.authserver.Authserver.model.ScanRequestPayload;
+import com.authserver.Authserver.producer.EventProducer;
 import com.authserver.Authserver.security.RequiresRoles;
-import com.authserver.Authserver.producer.ScanEventProducer;
+//import com.authserver.Authserver.producer.ScanEventProducer;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,17 +14,17 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api")
 public class ScanController {
 
-    private final ScanEventProducer scanEventProducer;
+    private final EventProducer eventProducer;
 
-    public ScanController(ScanEventProducer scanEventProducer) {
-        this.scanEventProducer = scanEventProducer;
+    public ScanController(EventProducer eventProducer) {
+        this.eventProducer = eventProducer;
     }
 
     @PostMapping("/scan")
     @RequiresRoles({Role.ADMIN, Role.SUPER_ADMIN})
     public ResponseEntity<String> initiateScan(@RequestBody ScanRequestPayload request) {
         ScanRequestEvent event = new ScanRequestEvent(request);
-        scanEventProducer.sendScanEvent(event);
+        eventProducer.sendScanEvent(event);
         return ResponseEntity.ok("Scan event sent successfully.");
     }
 }

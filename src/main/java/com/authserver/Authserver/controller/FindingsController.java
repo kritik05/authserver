@@ -3,7 +3,7 @@ import com.authserver.Authserver.events.UpdateRequestEvent;
 import com.authserver.Authserver.model.Role;
 import com.authserver.Authserver.model.StateRequest;
 import com.authserver.Authserver.model.UpdateRequestPayload;
-import com.authserver.Authserver.producer.UpdateEventProducer;
+import com.authserver.Authserver.producer.EventProducer;
 import com.authserver.Authserver.security.RequiresRoles;
 import com.authserver.Authserver.service.ElasticsearchService;
 import org.springframework.http.ResponseEntity;
@@ -17,11 +17,11 @@ import java.util.Map;
 public class FindingsController {
 
     private final ElasticsearchService elasticsearchService;
-    private final UpdateEventProducer updateEventProducer;
+    private final EventProducer eventProducer;
 
-    public FindingsController(ElasticsearchService elasticsearchService,UpdateEventProducer updateEventProducer) {
+    public FindingsController(ElasticsearchService elasticsearchService,EventProducer eventProducer) {
         this.elasticsearchService = elasticsearchService;
-        this.updateEventProducer=updateEventProducer;
+        this.eventProducer=eventProducer;
     }
 
     @DeleteMapping
@@ -67,7 +67,7 @@ public ResponseEntity<Map<String, Object>> searchFindings(
         try {
             UpdateRequestPayload updateRequestPayload=new UpdateRequestPayload(uuid,tooltype,request,alertNumber,tenantId);
             UpdateRequestEvent updateRequestEvent=new UpdateRequestEvent(updateRequestPayload);
-            updateEventProducer.sendUpdateEvent(updateRequestEvent);
+            eventProducer.sendUpdateEvent(updateRequestEvent);
             return ResponseEntity.noContent().build();
         } catch (Exception ex) {
             ex.printStackTrace();

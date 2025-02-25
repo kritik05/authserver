@@ -21,18 +21,44 @@ public class KafkaConfig {
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 
+//    @Bean
+//    public ProducerFactory<String, String> scanEventProducerFactory() {
+//        Map<String, Object> configProps = new HashMap<>();
+//        configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+//        configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+//        // Use StringSerializer for value
+//        configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+//        return new DefaultKafkaProducerFactory<>(configProps);
+//    }
+//    @Bean
+//    public KafkaTemplate<String, String> scanEventKafkaTemplate() {
+//        return new KafkaTemplate<>(scanEventProducerFactory());
+//    }
     @Bean
-    public ProducerFactory<String, Object> scanEventProducerFactory() {
+    public ProducerFactory<String, String> eventProducerFactory() {
         Map<String, Object> configProps = new HashMap<>();
         configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-        configProps.put(JsonSerializer.ADD_TYPE_INFO_HEADERS, false);
+        // Use StringSerializer for value as well
+        configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         return new DefaultKafkaProducerFactory<>(configProps);
     }
-
     @Bean
-    public KafkaTemplate<String, Object> scanEventKafkaTemplate() {
-        return new KafkaTemplate<>(scanEventProducerFactory());
+    public KafkaTemplate<String, String> eventKafkaTemplate() {
+        return new KafkaTemplate<>(eventProducerFactory());
     }
+//    @Bean
+//    public ProducerFactory<String, Object> scanEventProducerFactory() {
+//        Map<String, Object> configProps = new HashMap<>();
+//        configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+//        configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+//        configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+//        configProps.put(JsonSerializer.ADD_TYPE_INFO_HEADERS, false);
+//        return new DefaultKafkaProducerFactory<>(configProps);
+//    }
+//
+//    @Bean
+//    public KafkaTemplate<String, Object> scanEventKafkaTemplate() {
+//        return new KafkaTemplate<>(scanEventProducerFactory());
+//    }
 }

@@ -28,8 +28,6 @@ public class ElasticsearchService {
     private final ElasticsearchClient esClient;
     private final TenantRepository tenantRepository;
 
-    @Value("${app.elasticsearch.findings-index}")
-    private String findingsIndex;
 
     public ElasticsearchService(ElasticsearchClient esClient,TenantRepository tenantRepository) {
         this.esClient = esClient;
@@ -45,6 +43,23 @@ public class ElasticsearchService {
                 .index(esindex)
                 .query(q -> q.matchAll(m -> m))
         );
+    }
+
+    public void updateTicketId(String uuid, int tenantId, String newTicketId) throws IOException {
+        Optional<Tenant> optionalTenant = tenantRepository.findById(tenantId);
+        Tenant tenant = optionalTenant.orElseThrow(() -> new IllegalArgumentException("Tenant not found"));
+        String esIndex = tenant.getFindingindex(); // e.g., "tenant-findings"
+
+        Map<String, Object> partial = new HashMap<>();
+        partial.put("ticketId", newTicketId);
+        partial.put("updatedAt", Instant.now().toString());
+
+        UpdateRequest<Map<String, Object>, Map<String, Object>> updateReq = UpdateRequest.of(u -> u
+                .index(esIndex)
+                .id(uuid)
+                .doc(partial)
+        );
+        esClient.update(updateReq, Map.class);
     }
 
     public Map<String, Object> searchFindings(
@@ -101,6 +116,14 @@ public class ElasticsearchService {
         Optional<Tenant> optionalTenant = tenantRepository.findById(tenantId);
         Tenant tenant = optionalTenant.get();
         String esindex= tenant.getFindingindex();
+        boolean indexExists = esClient.indices().exists(e -> e.index(esindex)).value();
+        if (!indexExists) {
+            Map<String, Object> emptyResult = new HashMap<>();
+            emptyResult.put("content", Collections.emptyList());
+            emptyResult.put("totalElements", 0L);
+            emptyResult.put("offset", 0);
+            return emptyResult;
+        }
     SearchResponse<Finding> response = esClient.search(s -> s
                     .index(esindex)
                     .query(q -> q.bool(boolQuery))
