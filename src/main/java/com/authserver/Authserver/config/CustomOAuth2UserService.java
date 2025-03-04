@@ -3,7 +3,6 @@ package com.authserver.Authserver.config;
 import com.authserver.Authserver.model.User;
 import com.authserver.Authserver.model.Role;
 import com.authserver.Authserver.model.UserTenant;
-import com.authserver.Authserver.repository.TenantRepository;
 import com.authserver.Authserver.repository.UserRepository;
 import com.authserver.Authserver.repository.UserTenantRepository;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;

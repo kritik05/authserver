@@ -5,20 +5,14 @@ import co.elastic.clients.elasticsearch._types.FieldValue;
 import co.elastic.clients.elasticsearch._types.aggregations.*;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
-
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
-import co.elastic.clients.elasticsearch.core.UpdateRequest;
 import com.authserver.Authserver.model.Finding;
-import com.authserver.Authserver.model.Status;
 import com.authserver.Authserver.model.Tenant;
 import com.authserver.Authserver.repository.TenantRepository;
-
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -45,22 +39,6 @@ public class ElasticsearchService {
         );
     }
 
-    public void updateTicketId(String uuid, int tenantId, String newTicketId) throws IOException {
-        Optional<Tenant> optionalTenant = tenantRepository.findById(tenantId);
-        Tenant tenant = optionalTenant.orElseThrow(() -> new IllegalArgumentException("Tenant not found"));
-        String esIndex = tenant.getFindingindex(); // e.g., "tenant-findings"
-
-        Map<String, Object> partial = new HashMap<>();
-        partial.put("ticketId", newTicketId);
-        partial.put("updatedAt", Instant.now().toString());
-
-        UpdateRequest<Map<String, Object>, Map<String, Object>> updateReq = UpdateRequest.of(u -> u
-                .index(esIndex)
-                .id(uuid)
-                .doc(partial)
-        );
-        esClient.update(updateReq, Map.class);
-    }
 
     public Map<String, Object> searchFindings(
         List<String> toolTypes,

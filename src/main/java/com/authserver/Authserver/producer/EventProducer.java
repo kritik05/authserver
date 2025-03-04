@@ -28,7 +28,6 @@ public class EventProducer {
             String json = objectMapper.writeValueAsString(event);
             kafkaTemplate.send(unifiedTopic, json);
         } catch (Exception e) {
-            // Handle serialization exception appropriately
             e.printStackTrace();
         }
     }
@@ -39,21 +38,18 @@ public class EventProducer {
             System.out.println(json);
             kafkaTemplate.send(unifiedTopic, json);
         } catch (Exception e) {
-            // Handle serialization exception appropriately
             e.printStackTrace();
         }
-//        kafkaTemplate.send(updatetopic, event);
     }
+
     public void sendTicketCreateEvent(TicketCreateRequestEvent event) {
         try {
             String json = objectMapper.writeValueAsString(event);
             System.out.println(json);
             kafkaTemplate.send(unifiedTopic, json);
         } catch (Exception e) {
-            // Handle serialization exception appropriately
             e.printStackTrace();
         }
-//        kafkaTemplate.send(updatetopic, event);
     }
 
     public void sendTicketTransitionEvent(TicketTransitionRequestEvent event) {
@@ -62,10 +58,8 @@ public class EventProducer {
             System.out.println(json);
             kafkaTemplate.send(unifiedTopic, json);
         } catch (Exception e) {
-            // Handle serialization exception appropriately
             e.printStackTrace();
         }
-//        kafkaTemplate.send(updatetopic, event);
     }
 
 }

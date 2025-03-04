@@ -8,13 +8,13 @@ import com.authserver.Authserver.repository.TenantTicketRepository;
 import com.authserver.Authserver.security.RequiresRoles;
 import com.authserver.Authserver.service.ElasticsearchService;
 import com.authserver.Authserver.service.JiraService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @RestController
 @RequestMapping("/tickets")
@@ -32,7 +32,7 @@ public class TicketController {
     }
 
     @PostMapping("/{uuid}")
-    @RequiresRoles({Role.SUPER_ADMIN})
+    @RequiresRoles({Role.SUPER_ADMIN,Role.ADMIN})
     public String createTicket(@PathVariable("uuid") String uuid,
                                @RequestParam("tenantId") int tenantId,
                                @RequestBody Map<String, String> requestBody
@@ -49,15 +49,25 @@ public class TicketController {
 
     @GetMapping
     @RequiresRoles({Role.ADMIN, Role.SUPER_ADMIN,Role.USER})
-    public List<Ticket> getAllTicketsForTenant(@RequestParam("tenantId") int tenantId) {
-        List<TenantTicket> tickets = tenantTicketRepository.findByTenantId(tenantId);
-        List<Ticket> result = new ArrayList<>();
-        for (TenantTicket ticket : tickets) {
-                Ticket dto = jiraService.getIssueDetails(ticket.getTicketId(), tenantId);
-                result.add(dto);
+    public Map<String, Object>  getAllTicketsForTenant(@RequestParam("tenantId") int tenantId,
+                                               @RequestParam(defaultValue = "1") int page,
+                                               @RequestParam(defaultValue = "12") int size ) {
+        Pageable pageable = PageRequest.of(page - 1, size);
+        Page<TenantTicket> ticketsPage = tenantTicketRepository.findByTenantId(tenantId, pageable);
+        List<Ticket> ticketDetails = new ArrayList<>();
+        for (TenantTicket tenantTicket : ticketsPage) {
+            Ticket dto = jiraService.getIssueDetails(tenantTicket.getTicketId(), tenantId);
+            ticketDetails.add(dto);
         }
 
-        return result; // JSON list of JiraIssueDto
+        // Build a response similar to your ES response
+        Map<String, Object> response = new HashMap<>();
+        response.put("content", ticketDetails);
+        response.put("totalElements", ticketsPage.getTotalElements());  // total count
+        response.put("page", page);                                     // current page
+        response.put("size", size);                                     // page size
+
+        return response;
     }
 
     @GetMapping("/{ticketId}")
@@ -70,6 +80,7 @@ public class TicketController {
         }
         throw new RuntimeException("Ticket not found for tenant " + tenantId + " with ticket " + ticketId);
     }
+
     @GetMapping("/finding/{ticketId}")
     @RequiresRoles({Role.ADMIN, Role.SUPER_ADMIN,Role.USER})
     public String getFindingIdByTicketId(@PathVariable("ticketId") String ticketId,

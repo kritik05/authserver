@@ -2,11 +2,9 @@ package com.authserver.Authserver.controller;
 
 import com.authserver.Authserver.events.ScanRequestEvent;
 import com.authserver.Authserver.model.Role;
-//import com.authserver.Authserver.model.ScanEvent;
 import com.authserver.Authserver.model.ScanRequestPayload;
 import com.authserver.Authserver.producer.EventProducer;
 import com.authserver.Authserver.security.RequiresRoles;
-//import com.authserver.Authserver.producer.ScanEventProducer;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

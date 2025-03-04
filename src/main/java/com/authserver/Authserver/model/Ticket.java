@@ -1,8 +1,8 @@
 package com.authserver.Authserver.model;
 
 public class Ticket {
-    private String ticketId;           // e.g. "CAP-123"
-    private String issueTypeName;      // e.g. "Task"
+    private String ticketId;
+    private String issueTypeName;
     private String issueTypeDescription;
     private String issueSummary;
     private String statusName;

@@ -2,9 +2,7 @@ package com.authserver.Authserver.model;
 
 
 import jakarta.persistence.*;
-import org.apache.kafka.common.protocol.types.Field;
 
-import java.util.Objects;
 
 @Entity
 @Table(name = "tenant")
